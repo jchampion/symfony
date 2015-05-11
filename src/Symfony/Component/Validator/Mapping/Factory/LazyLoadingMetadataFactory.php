@@ -101,6 +101,22 @@ class LazyLoadingMetadataFactory implements MetadataFactoryInterface
             return $this->loadedClasses[$class];
         }
 
+        return $this->loadedClasses[$class] = $this->getCachedMetadataFor($class);
+    }
+
+    /**
+     * Returns durably cached metadata.
+     * Allows to skip the dynamic cache where constraints might have
+     * been altered.
+     *
+     * @param mixed $class Some class name
+     *
+     * @return ClassMetadata The metadata for the class
+     *
+     * @throws NoSuchMetadataException If no metadata exists for the given value
+     */
+    private function getCachedMetadataFor($class)
+    {
         if (null !== $this->cache && false !== ($this->loadedClasses[$class] = $this->cache->read($class))) {
             return $this->loadedClasses[$class];
         }
@@ -113,7 +129,7 @@ class LazyLoadingMetadataFactory implements MetadataFactoryInterface
 
         // Include constraints from the parent class
         if ($parent = $metadata->getReflectionClass()->getParentClass()) {
-            $metadata->mergeConstraints($this->getMetadataFor($parent->name));
+            $metadata->mergeConstraints($this->getCachedMetadataFor($parent->name));
         }
 
         // Include constraints from all implemented interfaces
@@ -121,7 +137,7 @@ class LazyLoadingMetadataFactory implements MetadataFactoryInterface
             if ('Symfony\Component\Validator\GroupSequenceProviderInterface' === $interface->name) {
                 continue;
             }
-            $metadata->mergeConstraints($this->getMetadataFor($interface->name));
+            $metadata->mergeConstraints($this->getCachedMetadataFor($interface->name));
         }
 
         if (null !== $this->loader) {
@@ -132,7 +148,7 @@ class LazyLoadingMetadataFactory implements MetadataFactoryInterface
             $this->cache->write($metadata);
         }
 
-        return $this->loadedClasses[$class] = $metadata;
+        return $metadata;
     }
 
     /**
